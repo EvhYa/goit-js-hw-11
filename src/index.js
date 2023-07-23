@@ -21,6 +21,8 @@ const swInstance = new ScrollWatch({
   onInfiniteYInView: onLoadMore,
 });
 
+swInstance.pauseInfiniteScroll();
+
 // localStorage.removeItem('searchQuery');
 
 // const loadMore = document.querySelector('.js-load');
@@ -35,12 +37,16 @@ searchForm.addEventListener('submit', handlerSubmit);
 
 async function handlerSubmit(event) {
   // loadMore.classList.add('hidden');
-
+  page = 1;
   event.preventDefault();
+
   try {
     // loadMore.addEventListener('click', onLoadMore);
-
-    localStorage.setItem('searchQuery', String(searchForm.searchQuery.value));
+    swInstance.pauseInfiniteScroll();
+    localStorage.setItem(
+      'searchQuery',
+      JSON.stringify(searchForm.searchQuery.value)
+    );
     gallery.innerHTML = '';
     const searchData = await searchImages(
       String(searchForm.searchQuery.value),
@@ -49,6 +55,12 @@ async function handlerSubmit(event) {
     const {
       data: { hits, totalHits },
     } = searchData;
+    swInstance.resumeInfiniteScroll();
+    if (page > totalHits / 40) {
+      // loadMore.classList.add('hidden');
+      swInstance.pauseInfiniteScroll();
+    }
+
     if (!hits.length) {
       throw new Error(
         'Sorry, there are no images matching your search query. Please try again.'
@@ -57,7 +69,7 @@ async function handlerSubmit(event) {
       gallery.insertAdjacentHTML('beforeend', createMarkup(hits).join(''));
       Notiflix.Notify.success(`Hooray! We found ${totalHits} images.`);
       watchDiv.classList.add('.js-infscroll');
-      swInstance.resumeInfiniteScroll();
+      // swInstance.resumeInfiniteScroll();
       // loadMore.classList.remove('hidden');
     }
 
@@ -151,7 +163,7 @@ function createMarkup(obj) {
 }
 
 async function onLoadMore() {
-  // console.log('this start when page loaded');
+  console.log('this start when page loaded');
   if (!localStorage.getItem('searchQuery') && !gallery.childElementCount) {
     return;
   }
@@ -168,7 +180,7 @@ async function onLoadMore() {
     gallery.insertAdjacentHTML('beforeend', createMarkup(hits).join(''));
 
     lightbox.refresh();
-    swInstance.refresh();
+    swInstance.resumeInfiniteScroll();
 
     const { height: cardHeight } = document
       .querySelector('.gallery')
@@ -183,7 +195,7 @@ async function onLoadMore() {
 
     if (page > totalHits / 40) {
       // loadMore.classList.add('hidden');
-      swInstance.destroy();
+      swInstance.pauseInfiniteScroll();
     }
   } catch (err) {
     console.log(err);
